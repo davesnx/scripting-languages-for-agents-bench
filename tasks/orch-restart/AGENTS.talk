@@ -1,0 +1,7 @@
+allow env PATH, HOME
+allow fetch from http://127.0.0.1:8081/
+
+# Runs deployctl with a list of arguments, such as deployctl ['version', 'api'].
+tool deployctl with argv
+  run 'deployctl' with argv within 1 minute
+end

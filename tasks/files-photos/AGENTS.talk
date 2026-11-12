@@ -1,0 +1,6 @@
+allow env PATH, HOME
+
+# Prints the SHA-256 checksum of each file, with sha256sum.
+tool checksums with files
+  run 'sha256sum' with files within 1 minute
+end

@@ -1,0 +1,6 @@
+allow env PATH, HOME
+
+# Gets the new commits and branches from origin, with git fetch origin.
+tool fetch_origin
+  run 'git' with 'fetch', 'origin' within 2 minutes
+end

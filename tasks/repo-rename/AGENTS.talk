@@ -1,0 +1,6 @@
+allow env PATH, HOME
+
+# Runs the test suite with npm test.
+tool run_tests
+  run 'npm test' within 2 minutes
+end
