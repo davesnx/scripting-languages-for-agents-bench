@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { ToolSpec } from "./conditions.ts";
-import type { Condition, ModelConfig, StopReason, ToolOutcome } from "./types.ts";
+import type { Condition, ModelConfig, StopReason, ToolOutcome, Usage } from "./types.ts";
 
 export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
 export type Message =
@@ -10,13 +10,13 @@ export type Message =
   | { role: "tool"; tool_call_id: string; content: string };
 type AssistantMessage = Extract<Message, { role: "assistant" }>;
 
-export type Completion = { message: AssistantMessage; inputTokens: number; outputTokens: number };
+export type Completion = Usage & { message: AssistantMessage };
 
 export interface Model {
   complete(messages: Message[], tools: ToolSpec[]): Promise<Completion>;
 }
 
-export type TurnLog = { turn: number; startedAt: string; modelMs: number; inputTokens: number; outputTokens: number; calls: CallLog[] };
+export type TurnLog = Usage & { turn: number; startedAt: string; modelMs: number; calls: CallLog[] };
 export type CallLog = { id: string; name: string; arguments: string; outcome: ToolOutcome; ms: number };
 
 export type AgentInput = {
@@ -29,7 +29,7 @@ export type AgentInput = {
   toolTimeoutSeconds: number;
   maxOutputChars: number;
   overBudget(): boolean;
-  spend(inputTokens: number, outputTokens: number): void;
+  spend(usage: Usage): void;
 };
 export type AgentOutput = { messages: Message[]; turns: TurnLog[]; stopReason: StopReason; error: string | null };
 export type Agent = (input: AgentInput) => Promise<AgentOutput>;
@@ -59,10 +59,10 @@ export function loopAgent(model: Model): Agent {
       } catch (e) {
         return stop("error", e instanceof Error ? e.message : String(e));
       }
-      const log: TurnLog = { turn, startedAt: startedAt.toISOString(), modelMs: Date.now() - startedAt.getTime(), inputTokens: completion.inputTokens, outputTokens: completion.outputTokens, calls: [] };
+      const { message, ...usage } = completion;
+      const log: TurnLog = { turn, startedAt: startedAt.toISOString(), modelMs: Date.now() - startedAt.getTime(), ...usage, calls: [] };
       turns.push(log);
-      input.spend(completion.inputTokens, completion.outputTokens);
-      const message = completion.message;
+      input.spend(usage);
       messages.push(message);
       if (!message.tool_calls?.length) return stop("done");
       for (const call of message.tool_calls) {
@@ -126,6 +126,8 @@ export function openRouterModel(config: ModelConfig, settings: Record<string, un
         return {
           message: { role: "assistant", content: choice.message.content ?? null, ...(choice.message.tool_calls?.length ? { tool_calls: choice.message.tool_calls } : {}) },
           inputTokens: data.usage?.prompt_tokens ?? 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
           outputTokens: data.usage?.completion_tokens ?? 0,
         };
       }
@@ -157,6 +159,7 @@ export function anthropicModel(config: ModelConfig, maxTokens: number, apiKey: s
       const response = await client.messages.create({
         model: config.id,
         max_tokens: maxTokens,
+        cache_control: { type: "ephemeral" },
         system: system.join("\n\n"),
         messages: history,
         tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: { type: "object", ...t.parameters } })),
@@ -172,7 +175,9 @@ export function anthropicModel(config: ModelConfig, maxTokens: number, apiKey: s
       const usage = response.usage;
       return {
         message,
-        inputTokens: usage.input_tokens + (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0),
+        inputTokens: usage.input_tokens,
+        cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
         outputTokens: usage.output_tokens,
       };
     },
@@ -182,7 +187,7 @@ export function anthropicModel(config: ModelConfig, maxTokens: number, apiKey: s
 export type MockScript = Partial<Record<Condition, { name: string; arguments: Record<string, unknown> }[]>>;
 
 export function mockModel(file: string, condition: Condition): Model {
-  const script: MockScript = JSON.parse(readFileSync(file, "utf8"));
+  const script: MockScript = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
   const calls = script[condition] ?? [];
   let next = 0;
   return {
@@ -193,7 +198,7 @@ export function mockModel(file: string, condition: Condition): Model {
       const message: AssistantMessage = call
         ? { role: "assistant", content: null, tool_calls: [{ id: `call_${next}`, type: "function", function: { name: call.name, arguments: JSON.stringify(call.arguments) } }] }
         : { role: "assistant", content: "Done." };
-      return { message, inputTokens, outputTokens: estimateTokens(JSON.stringify(message)) };
+      return { message, inputTokens, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: estimateTokens(JSON.stringify(message)) };
     },
   };
 }
