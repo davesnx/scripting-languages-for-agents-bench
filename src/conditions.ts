@@ -159,6 +159,8 @@ async function clankExecutor(sandbox: Sandbox): Promise<Executor> {
     }
   });
   const exited = new Promise<Record<string, unknown>>((resolve) => child.on("close", (code) => resolve({ error: { message: `clank-talk-mcp exited (${code}): ${stderr.trim()}` } })));
+  const pipeFailed = new Promise<never>((_, reject) => child.stdin.on("error", (e) => reject(new Error(`writing to clank-talk-mcp failed: ${e.message}`))));
+  pipeFailed.catch(() => {});
   const request = (method: string, params: Record<string, unknown>, timeoutMs: number): Promise<Record<string, unknown>> => {
     const id = nextId++;
     const answer = new Promise<Record<string, unknown>>((resolve) => pending.set(id, { resolve }));
@@ -167,7 +169,7 @@ async function clankExecutor(sandbox: Sandbox): Promise<Executor> {
     const timeout = new Promise<Record<string, unknown>>((resolve) => {
       timer = setTimeout(() => resolve({ error: { message: `Stopped: the call ran longer than ${timeoutMs / 1000} seconds` } }), timeoutMs);
     });
-    return Promise.race([answer, exited, timeout]).finally(() => clearTimeout(timer));
+    return Promise.race([answer, pipeFailed, exited, timeout]).finally(() => clearTimeout(timer));
   };
   const failure = (r: Record<string, unknown>) => (r.error as { message?: string } | undefined)?.message;
 
