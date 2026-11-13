@@ -17,22 +17,23 @@
       --font: "Google Sans Code", ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
     }
     * { box-sizing: border-box; }
-    html { background: var(--bg); color: var(--ink); font-family: var(--font); }
+    html { background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 125%; }
+    h1, h2, h3, pre, code { font-family: var(--font); }
     body { margin: 0; min-width: 320px; background: var(--bg); font-size: 1rem; line-height: 1.6; font-feature-settings: "tnum" 1, "zero" 1; }
     a { color: var(--accent); }
     a:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
     .shell { width: min(100% - 2rem, 72rem); margin: 0 auto; padding: 2rem 0 4rem; }
     header { padding: 1rem 0 1.5rem; border-bottom: 1px solid var(--line); }
-    h1 { margin: 0.75rem 0; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.15; overflow-wrap: anywhere; }
-    h2 { margin: 0 0 1rem; font-size: 1.2rem; font-weight: 700; }
+    h1 { margin: 0.75rem 0; font-size: clamp(1.12rem, 2.4vw, 1.6rem); line-height: 1.15; overflow-wrap: anywhere; }
+    h2 { margin: 0 0 1rem; font-size: 0.96rem; font-weight: 700; }
     h2::before { content: "## "; color: var(--primary); }
-    h3 { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9rem; font-weight: 600; }
+    h3 { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.72rem; font-weight: 600; }
     section { padding: 1.75rem 0; border-bottom: 1px solid var(--line); }
     .runline { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin: 0; padding: 0; color: var(--muted); list-style: none; }
     .runline strong { color: var(--ink); font-weight: 600; }
     .pos { color: var(--ok); } .neg { color: var(--bad); } .warn { color: var(--accent); } .faint { color: var(--faint); }
-    p { margin: 0 0 0.75rem; max-width: 90ch; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-    pre { margin: 0; padding: 0.75rem 0.9rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 0.88rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 32rem; overflow-y: auto; }
+    p { margin: 0 0 0.75rem; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre { margin: 0; padding: 0.75rem 0.9rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--font); font-size: 0.704rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 32rem; overflow-y: auto; }
     pre.out { background: var(--bg); color: var(--muted); }
     .turn { display: grid; gap: 0.6rem; padding: 1.1rem 0; border-top: 1px solid var(--line); }
     .turn:first-of-type { border-top: 0; }

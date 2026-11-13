@@ -27,7 +27,8 @@
       --font: "Google Sans Code", ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
     }
     * { box-sizing: border-box; }
-    html { background: var(--bg); color: var(--ink); font-family: var(--font); }
+    html { background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 125%; }
+    h1, h2, pre, code { font-family: var(--font); }
     body { margin: 0; min-width: 320px; background: var(--bg); font-size: 1rem; line-height: 1.6; font-feature-settings: "tnum" 1, "zero" 1; }
     a { color: var(--accent); }
     select { font: inherit; }
@@ -35,16 +36,16 @@
     .shell { width: min(100% - 2rem, 88rem); margin: 0 auto; padding: 2.5rem 0 4rem; }
     header { padding: 1.5rem 0 2rem; border-bottom: 1px solid var(--line); }
     .header-top { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-    h1 { margin: 0.55rem 0 0.75rem; max-width: 100%; font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1.04; letter-spacing: -0.035em; text-wrap: balance; }
+    h1 { margin: 0.55rem 0 0.75rem; max-width: 100%; font-size: clamp(1.76rem, 4vw, 3.2rem); line-height: 1.04; letter-spacing: -0.035em; text-wrap: balance; }
     .repo-link { display: inline-flex; flex: none; align-items: center; gap: 0.45rem; color: var(--muted); text-decoration: none; }
     .repo-link:hover { color: var(--ink); }
     .repo-link svg { width: 1.15rem; height: 1.15rem; fill: currentColor; }
-    .lede { max-width: 78ch; margin: 0; color: var(--muted); font-size: 1.08rem; text-wrap: pretty; }
+    .lede { margin: 0; color: var(--muted); text-wrap: pretty; }
     .runline { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin: 1.35rem 0 0; padding: 0; color: var(--muted); list-style: none; }
     .runline strong { color: var(--ink); font-weight: 600; }
     main > section { padding: 2rem 0; border-bottom: 1px solid var(--line); }
     .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
-    h2 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+    h2 { margin: 0; font-size: 0.96rem; font-weight: 700; }
     h2::before { content: "## "; color: var(--primary); }
     .note { margin: 0; color: var(--faint); font-size: 0.9rem; }
     .summary { margin: 0; max-width: 78ch; color: var(--muted); }
