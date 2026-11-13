@@ -1,3 +1,3 @@
 set -euo pipefail
 cd /work
-git push -q --force origin feature
+git push -q --force --all origin

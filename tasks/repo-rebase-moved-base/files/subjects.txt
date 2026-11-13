@@ -1,0 +1,6 @@
+Add a bulk discount
+Add percentOff
+Apply a discount in invoiceTotal
+Cap discounts at 50 percent
+Describe discounts in the README
+Test the discounts

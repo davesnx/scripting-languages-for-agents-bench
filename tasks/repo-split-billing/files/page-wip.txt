@@ -1,0 +1,2 @@
+export const billingPageTitle = 'Your invoices';
+export const showCreditNotes = true;

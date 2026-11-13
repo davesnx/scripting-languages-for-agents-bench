@@ -1,0 +1,2 @@
+allow env PATH, HOME
+allow fetch from http://127.0.0.1:8097/

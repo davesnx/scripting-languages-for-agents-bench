@@ -1,0 +1,12 @@
+allow env PATH, HOME
+allow fetch from http://127.0.0.1:8081/
+
+# Runs deployctl with a list of arguments, such as deployctl ['version', 'auth-api'].
+tool deployctl with argv
+  run 'deployctl' with argv within 1 minute
+end
+
+# Lists one page of the services, with deployctl list --page <page>, such as deployctl_list_page '2'.
+tool deployctl_list_page with page
+  run 'deployctl' with 'list', '--page', page within 1 minute
+end

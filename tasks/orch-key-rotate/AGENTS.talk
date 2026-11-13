@@ -1,0 +1,7 @@
+allow env PATH, HOME
+allow fetch from http://127.0.0.1:8086/
+
+# Runs svcctl, the service manager, with a list of arguments, such as svcctl ['status', 'checkout-web'].
+tool svcctl with argv
+  run 'svcctl' with argv within 1 minute
+end

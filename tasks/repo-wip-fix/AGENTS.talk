@@ -1,0 +1,26 @@
+allow env PATH, HOME
+
+# Runs the test suite with npm test.
+tool run_tests
+  run 'npm test' within 2 minutes
+end
+
+# Runs git with a list of arguments that are not options, such as run_git ['status'] or run_git ['worktree', 'list']. It does not run git config or git aliases.
+tool run_git with argv
+  run 'rungit' with argv within 2 minutes
+end
+
+# Shows the commits of a branch or range with git log --oneline --graph, such as git_log ['main..HEAD'].
+tool git_log with argv
+  run 'git' with 'log', '--oneline', '--graph', argv within 2 minutes
+end
+
+# Puts away the changes to tracked files and the untracked files, with git stash push --include-untracked.
+tool stash_untracked
+  run 'git' with 'stash', 'push', '--include-untracked' within 2 minutes
+end
+
+# Brings back the last stash with its staged changes, with git stash pop --index.
+tool stash_pop_index
+  run 'git' with 'stash', 'pop', '--index' within 2 minutes
+end
