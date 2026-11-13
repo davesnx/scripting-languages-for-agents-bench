@@ -1,4 +1,4 @@
-# Agent scripting language benchmark
+# Scripting languages for agents benchmark
 
 Needs Node.js 22.18 or later and Docker.
 
