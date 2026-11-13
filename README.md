@@ -50,6 +50,9 @@ node src/cli.ts report [--batch pilot]
 - `report` prints tables from a batch and writes them to
   `results/<batch>/report.md`.
 
+- `node src/site.ts <batch>` writes `docs/index.html`, the results page that
+  GitHub Pages serves, from a batch.
+
 ## Results
 
 - `results/<batch>/runs.jsonl`: one JSON line for each run.
