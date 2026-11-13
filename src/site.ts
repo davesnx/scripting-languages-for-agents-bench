@@ -7,7 +7,8 @@ import { loadTasks } from "./tasks.ts";
 import { CONDITIONS, type RunRecord } from "./types.ts";
 
 const batch = process.argv[2];
-if (!batch) throw new Error("usage: node src/site.ts <batch>");
+if (!batch) throw new Error("usage: node src/site.ts <batch> [note]");
+const note = process.argv[3] ?? "";
 
 const file = join(ROOT, "results", batch, "runs.jsonl");
 const all = latest(readRuns(file));
@@ -80,6 +81,7 @@ const pairs = conditionKeys.flatMap((a, i) =>
 
 const data = {
   batch,
+  note,
   models: unique((r) => r.model),
   runs: runs.length,
   excluded: all.length - runs.length,
