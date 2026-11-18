@@ -1,0 +1,6 @@
+allow env PATH, HOME
+
+# Prints the uncompressed content of gzip files, with zcat, such as zcat [@/logs/access.log.2.gz].
+tool zcat with files
+  run 'zcat' with '--', files within 2 minutes
+end

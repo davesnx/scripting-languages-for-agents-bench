@@ -1,0 +1,16 @@
+allow env PATH, HOME
+
+# Runs the test suite with npm test.
+tool run_tests
+  run 'npm test' within 2 minutes
+end
+
+# Shows the commits after a tag or commit up to HEAD, oldest first, one line each as <hash>|<parent hashes, separated by spaces>|<subject>, with git log --reverse --format='%h|%p|%s' <since>..HEAD, such as log_since 'v1.0.0'.
+tool log_since with since
+  run 'git' with 'log', '--reverse', '--format=%h|%p|%s', since + '..HEAD' within 1 minute
+end
+
+# Puts an annotated tag on the current commit, with git tag -a <name> -m <message>, such as tag_annotated 'v1.0.0', 'Release 1.0.0'.
+tool tag_annotated with name, message
+  run 'git' with 'tag', '-a', name, '-m', message within 1 minute
+end
