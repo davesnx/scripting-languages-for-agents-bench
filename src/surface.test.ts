@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { agentsTalk, checkArgs, expandArgv, functionsOf, surfaceDoc, type TaskSurface } from "./surface.ts";
+import { agentsTalk, checkArgs, expandArgv, functionsOf, surfaceDoc, teagentSkill, type TaskSurface } from "./surface.ts";
 import { importTalk, neutralDoc } from "./talk-import.ts";
 
 const TALK = `allow env PATH, HOME
@@ -73,7 +73,7 @@ test("checkArgs enforces names and types of the spec", () => {
 });
 
 test("every binding documents the same functions", () => {
-  for (const b of ["typescript", "python", "clank"] as const) {
+  for (const b of ["typescript", "python", "clank", "teagent"] as const) {
     const doc = surfaceDoc(b, surface);
     for (const f of functionsOf(surface)) assert.match(doc, new RegExp(`\\b${f.name}\\b`), `${b} lacks ${f.name}`);
     assert.match(doc, /127\.0\.0\.1:8081/);
@@ -87,4 +87,14 @@ test("agentsTalk relays each function through asl-call with a JSON record", () =
   assert.doesNotMatch(talk, /allow fetch/);
   assert.match(agentsTalk(surface, { builtinFetch: true }), /allow fetch from http:\/\/127\.0\.0\.1:8081\//);
   assert.equal(talk.match(/^tool /gm)?.length, functionsOf(surface).length);
+});
+
+test("teagentSkill exposes every function with a record of its parameters", () => {
+  const elm = teagentSkill(surface);
+  for (const f of functionsOf(surface)) assert.match(elm, new RegExp(`^${f.name} : `, "m"), `missing ${f.name}`);
+  assert.match(elm, /^archive_project : \{ archive : String, project : String \} -> Task Error Outcome$/m);
+  assert.match(elm, /^run_git : \{ argv : List String \} -> Task Error Outcome$/m);
+  assert.match(elm, /^run_tests : \{\} -> Task Error Outcome$/m);
+  assert.match(elm, /^glob : \{ pattern : String \} -> Task Error \(List String\)$/m);
+  assert.match(elm, /call "archive_project" \(jsonFields \[ \( "archive", jsonString args.archive \), \( "project", jsonString args.project \) \]\)/);
 });
