@@ -56,9 +56,9 @@ const MEASUREMENTS: [string, Cell][] = [
     const all = counted.reduce((s, r) => s + (r.scripts ?? 0), 0);
     return all === 0 ? "-" : `${pct(out / all)} (${out}/${all} scripts)`;
   }],
-  ["Blocked attempts by source (language / AGENTS.talk / human / sandbox), totals", (runs) => {
+  ["Blocked attempts by source (language / AGENTS.talk / human / sandbox / surface), totals", (runs) => {
     const sum = (k: keyof RunRecord["blockedBySource"]) => runs.reduce((s, r) => s + r.blockedBySource[k], 0);
-    return runs.length === 0 ? "-" : `${sum("language")} / ${sum("agents.talk")} / ${sum("human")} / ${sum("sandbox")}`;
+    return runs.length === 0 ? "-" : `${sum("language")} / ${sum("agents.talk")} / ${sum("human")} / ${sum("sandbox")} / ${sum("surface") || 0}`;
   }],
 ];
 
