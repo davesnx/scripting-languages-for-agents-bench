@@ -169,7 +169,8 @@ function signature(b: Binding, f: SurfaceFunction): string {
   if (b === "python") return `tools.${f.name}(${params.join(", ")})  # ${f.returns}`;
   if (b === "teagent") {
     const [ret] = f.kind === "tool" ? ["Outcome"] : (ELM_RESULT[f.name] as [string, string]);
-    return `${f.name} : { ${f.params.map((p) => `${elmName(p.name)} : ${TYPE_NAMES.teagent[p.type]}`).join(", ")} } -> Task Error ${ret.includes(" ") ? `(${ret})` : ret}`.replace("{  }", "{}");
+    const arg = f.params.length ? `{ ${f.params.map((p) => `${elmName(p.name)} : ${TYPE_NAMES.teagent[p.type]}`).join(", ")} }` : "()";
+    return `${f.name} : ${arg} -> Task Error ${ret.includes(" ") ? `(${ret})` : ret}`;
   }
   return `${f.name}${params.length ? ` with ${params.join(", ")}` : ""}  -- gives ${f.returns}`;
 }
@@ -260,8 +261,9 @@ export function teagentSkill(s: TaskSurface): string {
   for (const f of fns) if (ELM_RESERVED.has(f.name)) throw new Error(`${f.name} cannot name an Elm function`);
   const defs = fns.map((f) => {
     const [result, decode] = f.kind === "tool" ? ["Outcome", "\\r -> succeed (outcome r)"] : (ELM_RESULT[f.name] as [string, string]);
-    const record = f.params.length ? `{ ${f.params.map((p) => `${elmName(p.name)} : ${ELM_TYPE[p.type]}`).join(", ")} }` : "{}";
-    const json = `jsonFields [ ${f.params.map((p) => `( "${p.name}", ${ELM_ENCODE[p.type]} args.${elmName(p.name)} )`).join(", ")} ]`;
+    // Dartea has no empty record type: a function with no parameters takes ().
+    const record = f.params.length ? `{ ${f.params.map((p) => `${elmName(p.name)} : ${ELM_TYPE[p.type]}`).join(", ")} }` : "()";
+    const json = f.params.length ? `jsonFields [ ${f.params.map((p) => `( "${p.name}", ${ELM_ENCODE[p.type]} args.${elmName(p.name)} )`).join(", ")} ]` : `"{}"`;
     return [`{-| ${f.doc.replace(/-\}/g, "- }")} -}`, `${f.name} : ${record} -> Task Error ${result.includes(" ") && !result.startsWith("(") ? `(${result})` : result}`, `${f.name} args =`, `    call "${f.name}" (${json}) |> andThen (${decode})`, ""].join("\n");
   });
   return `module Surface exposing (Error(..), Entry, Stat, Response, Outcome, ${fns.map((f) => f.name).join(", ")})

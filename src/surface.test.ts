@@ -94,7 +94,8 @@ test("teagentSkill exposes every function with a record of its parameters", () =
   for (const f of functionsOf(surface)) assert.match(elm, new RegExp(`^${f.name} : `, "m"), `missing ${f.name}`);
   assert.match(elm, /^archive_project : \{ archive : String, project : String \} -> Task Error Outcome$/m);
   assert.match(elm, /^run_git : \{ argv : List String \} -> Task Error Outcome$/m);
-  assert.match(elm, /^run_tests : \{\} -> Task Error Outcome$/m);
+  assert.match(elm, /^run_tests : \(\) -> Task Error Outcome$/m);
+  assert.match(elm, /call "run_tests" \("\{\}"\)/);
   assert.match(elm, /^glob : \{ pattern : String \} -> Task Error \(List String\)$/m);
   assert.match(elm, /call "archive_project" \(jsonFields \[ \( "archive", jsonString args.archive \), \( "project", jsonString args.project \) \]\)/);
 });

@@ -48,7 +48,8 @@ main =
 - `Agent` here has only `shell`, and it runs in an empty folder of a machine
   that has no task files and no network. It cannot reach the task. Every
   effect on the task goes through `Surface`.
-- A `Surface` function takes one record with every field named, and gives a
+- A `Surface` function takes one record with every field named (a program
+  with no parameters takes `()`: `run_tests ()`), and gives a
   `Task Error a`. A refused call fails with `Refused message`; a failed one
   (a missing file, a target that exists) with `Failed message`.
 - A program of the task (such as `sqlite`) does not fail when the program
