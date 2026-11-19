@@ -67,7 +67,7 @@
     .multiples { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 1rem; }
     .panel { border: 1px solid var(--line); padding: 0.9rem 1rem 1rem; background: var(--surface); }
     .panel h3 { margin: 0 0 0.6rem; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
-    .panel .bar-row { grid-template-columns: 8rem 1fr 5rem; min-height: 1.6rem; gap: 0.5rem; font-size: 0.85rem; }
+    .panel .bar-row { grid-template-columns: 10rem 1fr 5rem; min-height: 1.6rem; gap: 0.5rem; font-size: 0.85rem; }
     .panel .bar-row.multi { min-height: 2.5rem; }
     .panel .tracks { display: grid; gap: 0.3rem; }
     .panel .bar-track { height: 0.55rem; }
@@ -122,7 +122,7 @@
       <section aria-labelledby="cost-title">
         <div class="section-head">
           <h2 id="cost-title">Cost and effort for each run</h2>
-          <p class="note">CPython, Node.js and Pyodide on the surface; mean per run; lower is better; green marks the lowest, red the highest</p>
+          <p class="note">mean per run; lower is better; green marks the lowest, red the highest</p>
         </div>
         <div class="multiples" id="cost"></div>
       </section>
@@ -208,9 +208,9 @@
       $("outcomes").append(row);
     }
 
-    // The cost cards show three runtimes only, by runtime name.
-    const COST = { "py-cpython": "CPython", "ts-node": "Node.js", "py-pyodide": "Pyodide" };
-    const COST_ROWS = D.conditions.filter((c) => c.condition in COST);
+    // The cost cards name each row by its runtime, not its language.
+    const COST = { "py-cpython": "CPython", "ts-node": "Node.js", "py-pyodide": "Pyodide", "ts-deno": "Deno", "teagent-surface": "teagent", "clank-surface": "ClankTalk", "clank-builtins": "ClankTalk built-ins", bash: "Bash, full OS", typescript: "Node.js, full OS", python: "CPython, full OS" };
+    const COST_ROWS = D.conditions;
     const kilo = (v) => (v / 1000).toFixed(v < 10000 ? 1 : 0) + "k";
     const PANELS = [
       ["cost", [["dollars", "", (v) => (v * 100).toFixed(2) + "¢"]]],
@@ -233,7 +233,8 @@
           values.append(el("div", {}, fmt(v) + (sub ? " " + sub : "")));
         });
         const runtime = el("span", { class: "lang" });
-        runtime.append(el("img", { src: "logos/" + LOGOS[c.condition], alt: "", width: 18, height: 18 }), COST[c.condition]);
+        if (LOGOS[c.condition]) runtime.append(el("img", { src: "logos/" + LOGOS[c.condition], alt: "", width: 18, height: 18 }));
+        runtime.append(COST[c.condition] ?? name(c.condition));
         const nameCell = el("div", { class: "bar-name" }); nameCell.append(runtime);
         row.append(nameCell, tracks, values);
         panel.append(row);
