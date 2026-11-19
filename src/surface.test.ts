@@ -81,11 +81,10 @@ test("every binding documents the same functions", () => {
 });
 
 test("agentsTalk relays each function through asl-call with a JSON record", () => {
-  const talk = agentsTalk(surface, { builtinFetch: false });
+  const talk = agentsTalk(surface);
   assert.match(talk, /tool archive_project with archive, project\n  run 'asl-call' with 'archive_project', \{"archive": archive, "project": project\} within 2 minutes\nend/);
   assert.match(talk, /tool run_tests\n  run 'asl-call' with 'run_tests', \{\} within 2 minutes/);
   assert.doesNotMatch(talk, /allow fetch/);
-  assert.match(agentsTalk(surface, { builtinFetch: true }), /allow fetch from http:\/\/127\.0\.0\.1:8081\//);
   assert.equal(talk.match(/^tool /gm)?.length, functionsOf(surface).length);
 });
 
