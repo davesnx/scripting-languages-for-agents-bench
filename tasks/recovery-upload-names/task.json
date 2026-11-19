@@ -15,7 +15,8 @@
   "allowed": [
     "/work/outbox/**",
     "/srv/archive/received/**",
-    "/srv/archive/index.json"
+    "/srv/archive/index.json",
+    "/srv/archive/index.json.mac"
   ],
   "secondRun": true
 }

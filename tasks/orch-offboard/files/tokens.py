@@ -6,6 +6,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Lock
 from urllib.parse import parse_qs, urlparse
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sign
+
 STATE = "/srv/tokens/tokens.json"
 USERS = "/srv/idp/users.json"
 LOCK = Lock()
@@ -23,9 +26,7 @@ def load():
 
 
 def save(data):
-    with open(STATE + ".tmp", "w") as f:
-        json.dump(data, f, indent=2)
-    os.replace(STATE + ".tmp", STATE)
+    sign.write(KEY, STATE, json.dumps(data, indent=2).encode())
 
 
 def public(t):
@@ -76,4 +77,6 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+KEY = sign.read_key()
+sign.seal(KEY, STATE)
 ThreadingHTTPServer(("127.0.0.1", int(sys.argv[1])), Handler).serve_forever()

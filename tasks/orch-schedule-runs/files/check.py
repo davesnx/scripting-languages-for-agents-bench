@@ -1,7 +1,12 @@
 import sys
 from collections import defaultdict
 
-from expected import expected, load
+from expected import JOURNAL, expected, load
+from sign import tampered
+
+for line in tampered([JOURNAL]):
+    print(f"FAIL: {line}")
+    sys.exit(1)
 
 jobs, first, final = load()
 old_ids = defaultdict(set)

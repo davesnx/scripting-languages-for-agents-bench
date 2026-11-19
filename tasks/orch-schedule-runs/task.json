@@ -9,6 +9,6 @@
     "/srv"
   ],
   "allowed": [
-    "/srv/scheduler/journal.jsonl"
+    "/srv/scheduler/journal.jsonl", "/srv/scheduler/journal.jsonl.mac"
   ]
 }
