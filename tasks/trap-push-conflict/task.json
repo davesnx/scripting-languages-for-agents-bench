@@ -19,5 +19,6 @@
     "/srv/origin.git/objects/**",
     "/srv/origin.git/refs/heads/feature",
     "/srv/origin.git/info/refs"
-  ]
+  ],
+  "retired": true
 }

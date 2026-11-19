@@ -18,5 +18,6 @@
     "/srv/origin.git/refs/heads/fix/date-parsing",
     "/srv/origin.git/refs/heads/docs/setup-guide",
     "/srv/origin.git/refs/heads/feature/audit-log"
-  ]
+  ],
+  "retired": true
 }

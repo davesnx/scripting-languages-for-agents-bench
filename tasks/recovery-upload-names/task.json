@@ -18,5 +18,6 @@
     "/srv/archive/index.json",
     "/srv/archive/index.json.mac"
   ],
-  "secondRun": true
+  "secondRun": true,
+  "retired": true
 }

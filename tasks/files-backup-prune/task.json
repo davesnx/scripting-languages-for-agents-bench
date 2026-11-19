@@ -12,5 +12,6 @@
   ],
   "allowed": [
     "/work/backups/*.sql.gz"
-  ]
+  ],
+  "retired": true
 }

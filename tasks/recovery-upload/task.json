@@ -5,5 +5,6 @@
   "watched": ["/work", "/srv/archive"],
   "state": ["/work", "/srv", "/tmp", "/root"],
   "allowed": ["/work/outbox/**", "/srv/archive/received/**", "/srv/archive/index.json", "/srv/archive/index.json.mac"],
-  "secondRun": true
+  "secondRun": true,
+  "retired": true
 }

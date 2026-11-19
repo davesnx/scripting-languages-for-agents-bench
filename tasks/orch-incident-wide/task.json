@@ -28,5 +28,6 @@
     "/srv/deploy/search-indexer.json.mac",
     "/srv/deploy/tax-indexer.json",
     "/srv/deploy/tax-indexer.json.mac"
-  ]
+  ],
+  "retired": true
 }
