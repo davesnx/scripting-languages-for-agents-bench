@@ -5,6 +5,7 @@
 //   condition        runtime                         where the program runs
 //   ts-deno          Deno, no permissions            task container (Deno is the boundary)
 //   py-pyodide       Pyodide in that Deno            task container (Deno is the boundary)
+//   vera-surface     Vera, compiled to WASM          task container (only our host imports reach out)
 //   ts-submilli      Submilli (TS subset, WASM)      task container (its Blueprint is the boundary)
 //   py-monty         Monty (Python in Rust, as WASM)  task container (Monty is the boundary)
 //   ts-node          Node.js                         script container (the container is the boundary)
@@ -25,7 +26,7 @@ import { startDocker, type Sandbox } from "./sandbox.ts";
 import { agentsTalk, functionsOf, loadSurface, teagentSkill, type TaskSurface } from "./surface.ts";
 import type { Blocked, Task, ToolOutcome } from "./types.ts";
 
-export const CODEMODE_CONDITIONS = ["ts-deno", "ts-submilli", "py-pyodide", "py-monty", "ts-node", "py-cpython", "clank-surface", "teagent-surface"] as const;
+export const CODEMODE_CONDITIONS = ["ts-deno", "ts-submilli", "py-pyodide", "py-monty", "ts-node", "py-cpython", "clank-surface", "teagent-surface", "vera-surface"] as const;
 export type CodemodeCondition = (typeof CODEMODE_CONDITIONS)[number];
 export const isCodemode = (c: string): c is CodemodeCondition => (CODEMODE_CONDITIONS as readonly string[]).includes(c);
 
@@ -38,7 +39,7 @@ const CLANK_SURFACE_ROOT = "/project";
 /** Scratch space that every code-mode condition may use through the surface. */
 export const SCRATCH = "/work/.scratch";
 
-export const languageOf = (c: CodemodeCondition) => (c.startsWith("ts-") ? "typescript" : c.startsWith("py-") ? "python" : c.startsWith("teagent") ? "teagent" : "clank");
+export const languageOf = (c: CodemodeCondition) => (c.startsWith("ts-") ? "typescript" : c.startsWith("py-") ? "python" : c.startsWith("teagent") ? "teagent" : c.startsWith("vera") ? "vera" : "clank");
 
 /** Parameter names in order, for Python's positional calls. */
 function paramsJson(s: TaskSurface): string {
@@ -159,26 +160,29 @@ export async function openSurface(task: Sandbox, t: Task, opts: { image: string;
   }
 }
 
-const RUN_CODE_DOC: Record<"typescript" | "python" | "submilli", string> = {
+const RUN_CODE_DOC: Record<"typescript" | "python" | "submilli" | "vera", string> = {
+  vera: "Run a Vera program: a module with `public fn main(@Unit -> @Unit)`. Vera checks the types, contracts and effects before anything runs. The program reaches the task only through the functions of the surface, called through its IO and Http effects. Gives what the program printed, or the compiler's report or the error that stopped it.",
   submilli: "Run a Submilli program: a strict TypeScript subset, compiled to WebAssembly. The program exports `function main()`, and reaches the task only through the functions of `@tools`. Gives what the program logged, then the value of main or the error that stopped it.",
   typescript: "Run TypeScript code: the body of an async function. The code reaches the task only through the functions of `tools`. Gives what the code printed, then the return value or the error that stopped it.",
   python: "Run a Python 3 program. The program reaches the task only through the functions of the `tools` module, already imported. Gives what the program printed, or the error that stopped it.",
 };
 
-function runCodeTool(language: "typescript" | "python" | "submilli"): ToolSpec {
+function runCodeTool(language: "typescript" | "python" | "submilli" | "vera"): ToolSpec {
   return {
     name: "run_code",
     description: RUN_CODE_DOC[language],
-    parameters: { type: "object", properties: { code: { type: "string", description: language === "typescript" ? "The TypeScript code" : language === "submilli" ? "The Submilli program" : "The Python program" } }, required: ["code"] },
+    parameters: { type: "object", properties: { code: { type: "string", description: language === "typescript" ? "The TypeScript code" : language === "submilli" ? "The Submilli program" : language === "vera" ? "The Vera program" : "The Python program" } }, required: ["code"] },
   };
 }
 
 /** The command that runs one program, and the container it runs in. */
-function programCommand(condition: "ts-deno" | "ts-submilli" | "py-pyodide" | "py-monty" | "ts-node" | "py-cpython", timeoutSeconds: number): string[] {
+function programCommand(condition: "ts-deno" | "ts-submilli" | "py-pyodide" | "py-monty" | "ts-node" | "py-cpython" | "vera-surface", timeoutSeconds: number): string[] {
   const t = ["timeout", "-k", "2", String(timeoutSeconds)];
   switch (condition) {
     case "ts-deno":
       return [...t, "node", `${ASL}/deno/host.ts`, "typescript", PARAMS_FILE];
+    case "vera-surface":
+      return [...t, "node", "--disable-warning=ExperimentalWarning", `${ASL}/vera/run.ts`];
     case "ts-submilli":
       return [...t, "node", "--disable-warning=ExperimentalWarning", `${ASL}/submilli/run.ts`, SURFACE_FILE];
     case "py-monty":
@@ -250,7 +254,7 @@ export async function openCodemode(task: Sandbox, condition: CodemodeCondition, 
       };
     }
     const box = inScript ? (session.script as Sandbox) : task;
-    const language = condition === "ts-submilli" ? "submilli" : (languageOf(condition) as "typescript" | "python");
+    const language = condition === "ts-submilli" ? "submilli" : condition === "vera-surface" ? "vera" : (languageOf(condition) as "typescript" | "python");
     return {
       tools: [runCodeTool(language)],
       async call(name, args, timeoutSeconds): Promise<ToolOutcome> {
