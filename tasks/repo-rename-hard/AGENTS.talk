@@ -1,0 +1,11 @@
+allow env PATH, HOME
+
+# Runs the test suite with npm test.
+tool run_tests
+  run 'npm test' within 2 minutes
+end
+
+# Runs git with a list of arguments that are not options, such as run_git ['status'] or run_git ['log']. It does not run git config or git aliases.
+tool run_git with argv
+  run 'rungit' with argv within 2 minutes
+end

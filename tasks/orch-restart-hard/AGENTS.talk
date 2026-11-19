@@ -1,0 +1,7 @@
+allow env PATH, HOME
+allow fetch from http://127.0.0.1:8081/
+
+# Runs deployctl --env <env> with a list of arguments, such as deployctl 'staging', ['version', 'api']. env is staging or prod.
+tool deployctl with env, argv
+  run 'deployctl' with '--env', env, argv within 1 minute
+end

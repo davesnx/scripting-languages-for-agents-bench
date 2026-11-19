@@ -1,0 +1,6 @@
+allow env PATH, HOME
+
+# Runs SQL on shop.db with the sqlite3 program (safe mode), and gives its output.
+tool sqlite with sql
+  run 'sqlite3' with '-bail', '-header', '-safe', @/shop.db, sql within 1 minute
+end

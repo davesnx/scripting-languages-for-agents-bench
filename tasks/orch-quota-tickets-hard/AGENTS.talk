@@ -1,0 +1,4 @@
+allow env PATH, HOME
+allow fetch from http://127.0.0.1:8083/, http://127.0.0.1:8084/
+allow secret QUOTA_TOKEN for fetch to http://127.0.0.1:8084/
+taint asks before push
