@@ -7,7 +7,7 @@
 //   py-pyodide       Pyodide in that Deno            task container (Deno is the boundary)
 //   ts-node          Node.js                         script container (the container is the boundary)
 //   py-cpython       CPython 3                       script container
-//   clank-surface    ClankTalk, built-ins on /project  script container: built-ins see an empty folder
+//   clank-surface    ClankTalk, built-ins on /project  script container: a read-only folder with only AGENTS.talk
 //   clank-builtins   ClankTalk, built-ins on /work     task container: built-ins and the surface
 //   teagent-surface  Dartea in teagent, only `shell`   script container: the Surface skill module
 //
@@ -15,6 +15,9 @@
 // network and no task files. Its programs reach the broker through a relay
 // (src/container/asl/relay.ts) whose stdio this module joins to the broker's.
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { clankServer, teagentServer, type Executor, type McpServer, type ToolSpec } from "./conditions.ts";
 import { startDocker, type Sandbox } from "./sandbox.ts";
@@ -29,7 +32,7 @@ const ASL = "/opt/src/container/asl";
 const TASK_DIR = "/opt/asl-task";
 export const SURFACE_FILE = `${TASK_DIR}/surface.json`;
 export const PARAMS_FILE = `${TASK_DIR}/params.json`;
-/** ClankTalk's project root in clank-surface: an empty folder of the script container. */
+/** ClankTalk's project root in clank-surface: a read-only folder of the script container. */
 const CLANK_SURFACE_ROOT = "/project";
 /** Scratch space that every code-mode condition may use through the surface. */
 export const SCRATCH = "/work/.scratch";
@@ -85,7 +88,7 @@ export type SurfaceSession = {
   close(): Promise<void>;
 };
 
-export async function openSurface(task: Sandbox, t: Task, opts: { image: string; scriptContainer: boolean }): Promise<SurfaceSession> {
+export async function openSurface(task: Sandbox, t: Task, opts: { image: string; scriptContainer: boolean; scriptArgs?: string[] }): Promise<SurfaceSession> {
   const surface = loadSurface(t.dir);
   await writeFile(task, SURFACE_FILE, JSON.stringify(surface));
   await writeFile(task, PARAMS_FILE, paramsJson(surface));
@@ -118,7 +121,7 @@ export async function openSurface(task: Sandbox, t: Task, opts: { image: string;
     await brokerReady;
 
     if (opts.scriptContainer) {
-      script = await startDocker(opts.image);
+      script = await startDocker(opts.image, opts.scriptArgs);
       await writeFile(script, PARAMS_FILE, paramsJson(surface));
       relay = script.open(["node", `${ASL}/relay.ts`], {});
       const relayReady = waitReady(relay, "the relay");
@@ -192,7 +195,30 @@ const TEAGENT_PROFILE = JSON.stringify({ tools: ["bash", "run"] });
 
 export async function openCodemode(task: Sandbox, condition: CodemodeCondition, t: Task, image: string, mcp: (box: Sandbox, server: McpServer) => Promise<Executor>): Promise<Executor> {
   const inScript = condition === "ts-node" || condition === "py-cpython" || condition === "clank-surface" || condition === "teagent-surface";
-  const session = await openSurface(task, t, { image, scriptContainer: inScript });
+  // clank-surface: ClankTalk's root is a read-only mount that holds only AGENTS.talk, so a
+  // built-in write fails loudly instead of landing in a folder the task never sees.
+  // .talk (its audit and undo state) stays writable in memory.
+  let clankRoot: string | null = null;
+  if (condition === "clank-surface") {
+    clankRoot = mkdtempSync(join(tmpdir(), "asl-clank-"));
+    mkdirSync(join(clankRoot, ".talk"));
+    writeFileSync(join(clankRoot, "AGENTS.talk"), agentsTalk(loadSurface(t.dir), { builtinFetch: false }));
+  }
+  const removeRoot = () => {
+    if (clankRoot) rmSync(clankRoot, { recursive: true, force: true });
+  };
+  const scriptArgs = clankRoot ? ["-v", `${clankRoot}:${CLANK_SURFACE_ROOT}:ro`, "--tmpfs", `${CLANK_SURFACE_ROOT}/.talk`] : [];
+  let session: SurfaceSession;
+  try {
+    session = await openSurface(task, t, { image, scriptContainer: inScript, scriptArgs });
+  } catch (e) {
+    removeRoot();
+    throw e;
+  }
+  const closeSession = async () => {
+    await session.close();
+    removeRoot();
+  };
   try {
     if (condition === "clank-surface" || condition === "clank-builtins" || condition === "teagent-surface") {
       const box = condition === "clank-builtins" ? task : (session.script as Sandbox);
@@ -204,7 +230,6 @@ export async function openCodemode(task: Sandbox, condition: CodemodeCondition, 
       } else {
         const root = condition === "clank-surface" ? CLANK_SURFACE_ROOT : "/work";
         // clank-builtins: the runner already wrote /work/AGENTS.talk before the snapshot.
-        if (condition === "clank-surface") await writeFile(box, `${root}/AGENTS.talk`, agentsTalk(session.surface, { builtinFetch: false }));
         server = clankServer(root);
       }
       const inner = await mcp(box, server);
@@ -216,7 +241,7 @@ export async function openCodemode(task: Sandbox, condition: CodemodeCondition, 
         },
         close() {
           inner.close();
-          void session.close();
+          void closeSession();
         },
       };
     }
@@ -231,11 +256,11 @@ export async function openCodemode(task: Sandbox, condition: CodemodeCondition, 
         return { ok: r.code === 0, output: `${r.stdout}${r.stderr}${stopped}`, blocked: await session.takeRefusals() };
       },
       close() {
-        void session.close();
+        void closeSession();
       },
     };
   } catch (e) {
-    await session.close();
+    await closeSession();
     throw e;
   }
 }
