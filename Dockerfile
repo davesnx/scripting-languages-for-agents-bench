@@ -22,6 +22,14 @@ RUN curl -fsSLo /usr/local/bin/bpl https://github.com/AnswerDotAI/basedpl/releas
   && echo "8e5f92bf0747815d02f99dc21a804071095b1a26d8afc967d7c873eb70b8460f  /usr/local/bin/bpl" | sha256sum -c - \
   && chmod 755 /usr/local/bin/bpl
 COPY --from=teagent /home/opam/teagent/_build/default/bin/teagent.exe /usr/local/bin/teagent
+# Monty (py-monty): a Python sandbox in Rust, driven from Node.
+RUN mkdir -p /opt/monty && cd /opt/monty && npm init -y >/dev/null \
+  && npm install --no-audit --no-fund @pydantic/monty@1.6.0 && npm cache clean --force
+# Vera (vera-surface): its compiler, in a Python virtual environment.
+RUN apt-get update && apt-get install -y --no-install-recommends python3-venv && rm -rf /var/lib/apt/lists/* \
+  && python3 -m venv /opt/vera && /opt/vera/bin/pip install --no-cache-dir veralang==0.2.8
+# Submilli (ts-submilli): its CLI and server, static binaries.
+RUN curl -fsSL https://submilli.ai/install.sh | sh -s -- --version v0.6.4 --install-dir /usr/local/bin
 RUN git config --system user.name agent \
   && git config --system user.email agent@example.invalid \
   && git config --system init.defaultBranch main
