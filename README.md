@@ -1,5 +1,7 @@
 # Scripting languages for agents benchmark
 
+Results: https://davesnx.github.io/scripting-languages-for-agents-bench/
+
 When an AI agent acts on a computer, it writes something that a runtime
 executes: JSON tool calls, a Bash or Python script, or a program in a
 language made for agents. Such a language, for example ClankTalk, limits what
