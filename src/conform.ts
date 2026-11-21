@@ -96,6 +96,37 @@ for p in probes:
 `;
 }
 
+/** Lua: each probe through the generated binding, with named arguments. The probe data travels as JSON, decoded by the runner's `json`. */
+function luaProgram(probes: Probe[]): string {
+  return `
+local probes = json.decode(${luaString(JSON.stringify(probes.map(({ name, fn, args }) => ({ name, fn, args }))))})
+local function text(v)
+  if type(v) == "string" then return v end
+  if v == nil then return "" end
+  if type(v) == "table" and #v > 0 then
+    local out = {}
+    for i, x in ipairs(v) do out[i] = x .. "\\n" end
+    return table.concat(out)
+  end
+  return json.encode(v) .. "\\n"
+end
+for _, p in ipairs(probes) do
+  local ok, v = pcall(function() return tools[p.fn](p.args) end)
+  local r
+  if ok then
+    local is_tool = type(v) == "table" and v.code ~= nil and v.output ~= nil
+    r = { name = p.name, outcome = "ok", code = is_tool and v.code or 0, text = is_tool and v.output or text(v), status = type(v) == "table" and v.status or nil }
+  else
+    local m = tostring(v)
+    r = { name = p.name, outcome = m:find("^refused:") and "refused" or "error", text = m }
+  end
+  print("PROBE " .. json.encode(r))
+end
+`;
+}
+
+const luaString = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+
 const talkValue = (v: unknown): string =>
   typeof v === "string" ? `'${v.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'` : Array.isArray(v) ? `[${v.map(talkValue).join(", ")}]` : JSON.stringify(v);
 
@@ -308,7 +339,7 @@ const ignoreClank = (c: string) => !/ \/work\/(AGENTS\.talk|\.talk)(\/|$)/.test(
 async function conformOne(image: string, condition: CodemodeCondition): Promise<string[]> {
   return withFixture(image, condition, async (call, task) => {
     const before = await task.snapshot(FIXTURE.watched);
-    const program = condition.startsWith("ts-") && condition !== "ts-submilli" ? tsProgram(PROBES) : condition.startsWith("py-") ? pyProgram(PROBES) : condition.startsWith("teagent") ? teagentProgram(PROBES) : condition === "ts-submilli" ? submilliProgram(PROBES) : condition === "vera-surface" ? veraProgram(PROBES) : clankProgram(PROBES);
+    const program = condition.startsWith("ts-") && condition !== "ts-submilli" ? tsProgram(PROBES) : condition.startsWith("py-") ? pyProgram(PROBES) : condition.startsWith("teagent") ? teagentProgram(PROBES) : condition === "ts-submilli" ? submilliProgram(PROBES) : condition === "vera-surface" ? veraProgram(PROBES) : condition === "lua-puc" ? luaProgram(PROBES) : clankProgram(PROBES);
     const r = await call(program);
     const results = parse(condition, r.output);
     const failures: string[] = [];
@@ -378,6 +409,32 @@ try_it("process", lambda: subprocess.run("cat /work/secret.txt /srv/svc/secret.t
 try_it("process-write", lambda: subprocess.run("echo x > /work/a.txt", shell=True).returncode)
 try_it("http-service", lambda: urllib.request.urlopen("http://127.0.0.1:8099/secret.txt", timeout=3).read())
 try_it("env", lambda: dict(os.environ))
+`,
+  "lua-puc": `
+local function try_it(name, f)
+  local ok, v = pcall(f)
+  print(name .. " " .. (ok and tostring(v):sub(1, 200) or ("failed " .. tostring(v))))
+end
+local function read(path)
+  local f = assert(io.open(path))
+  local s = f:read("a")
+  f:close()
+  return s
+end
+local function run(command)
+  local p = assert(io.popen(command))
+  local s = p:read("a")
+  p:close()
+  return s
+end
+try_it("fs-work", function() return read("/work/secret.txt") end)
+try_it("fs-srv", function() return read("/srv/svc/secret.txt") end)
+try_it("proc-root", function() return read("/proc/1/root/work/secret.txt") end)
+try_it("process", function() return run("cat /work/secret.txt /srv/svc/secret.txt 2>&1; ls /work 2>&1") end)
+try_it("process-write", function() return os.execute("echo x > /work/a.txt") end)
+try_it("write", function() return assert(io.open("/work/a.txt", "w")):write("x") end)
+try_it("http-service", function() return run("curl -s --max-time 3 http://127.0.0.1:8099/secret.txt 2>&1") end)
+try_it("env", function() return run("env") end)
 `,
   // Vera's only routes out are the surface's own (IO.read_file, Http): /work and the
   // task's services are reachable by design, so the attempts go around them.

@@ -86,10 +86,11 @@ If the build cannot resolve hosts, add `--network host`. The image name must
 match `image` in `config.json`. Build the image again after a change to
 `src/container/` or `src/surface.ts`.
 
-The image holds every runtime. One build stage compiles a runtime from
-source, at the commit from pull request #1. A clean build of that stage
-fails right now with an opam package conflict, so the image builds only from
-Docker's cache of an earlier build.
+The image holds every runtime. Two build stages compile a runtime from
+source: teagent, at the commit from pull request #1, and PUC-Rio Lua, from
+its release archive checked against its SHA-256 sum. A clean build of the
+teagent stage fails right now with an opam package conflict, so the image
+builds only from Docker's cache of an earlier build.
 
 Install the type checker once: `npm install`. Check the types with
 `npx tsc --noEmit`.

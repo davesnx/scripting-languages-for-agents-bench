@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { agentsTalk, checkArgs, expandArgv, functionsOf, surfaceDoc, teagentSkill, type TaskSurface } from "./surface.ts";
+import { agentsTalk, checkArgs, expandArgv, functionsOf, luaBinding, surfaceDoc, teagentSkill, type TaskSurface } from "./surface.ts";
 import { importTalk, neutralDoc } from "./talk-import.ts";
 
 const TALK = `allow env PATH, HOME
@@ -73,7 +73,7 @@ test("checkArgs enforces names and types of the spec", () => {
 });
 
 test("every binding documents the same functions", () => {
-  for (const b of ["typescript", "python", "clank", "teagent"] as const) {
+  for (const b of ["typescript", "python", "clank", "teagent", "lua"] as const) {
     const doc = surfaceDoc(b, surface);
     for (const f of functionsOf(surface)) assert.match(doc, new RegExp(`\\b${f.name}\\b`), `${b} lacks ${f.name}`);
     assert.match(doc, /127\.0\.0\.1:8081/);
@@ -97,4 +97,13 @@ test("teagentSkill exposes every function with a record of its parameters", () =
   assert.match(elm, /call "run_tests" \("\{\}"\)/);
   assert.match(elm, /^glob : \{ pattern : String \} -> Task Error \(List String\)$/m);
   assert.match(elm, /call "archive_project" \(jsonFields \[ \( "archive", jsonString args.archive \), \( "project", jsonString args.project \) \]\)/);
+});
+
+test("luaBinding defines every function with its parameters in order and their types", () => {
+  const lua = luaBinding(surface);
+  assert.equal(lua.match(/^define\(/gm)?.length, functionsOf(surface).length);
+  assert.match(lua, /^define\("archive_project", \{ \{ "archive", "string" \}, \{ "project", "string" \} \}\)$/m);
+  assert.match(lua, /^define\("run_git", \{ \{ "argv", "strings" \} \}\)$/m);
+  assert.match(lua, /^define\("run_tests", \{\}\)$/m);
+  assert.match(lua, /^define\("http", \{ \{ "url", "string" \}, \{ "method", "string" \}, \{ "headers", "object" \}, \{ "body", "string" \} \}\)$/m);
 });
