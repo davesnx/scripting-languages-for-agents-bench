@@ -20,7 +20,7 @@ import { appendFileSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdir
 import { createServer } from "node:net";
 import { dirname, posix } from "node:path";
 import { createInterface } from "node:readline";
-import { checkArgs, checkSurface, expandArgv, functionsOf, ROOT_DIR, type TaskSurface } from "../../surface.ts";
+import { checkArgs, checkSurface, expandArgv, functionsOf, MAX_SLEEP_SECONDS, ROOT_DIR, type TaskSurface } from "../../surface.ts";
 
 export const SOCKET = "/run/asl/broker.sock";
 
@@ -185,6 +185,12 @@ export function makeBroker(surface: TaskSurface) {
       // An empty body is no body: fetch refuses any body, even "", on GET and HEAD.
       const r = await fetch(url, { method: a.method ? String(a.method) : "GET", headers: (a.headers ?? {}) as Record<string, string>, body: a.body === undefined || a.body === null || a.body === "" ? undefined : String(a.body), redirect: "manual", signal: AbortSignal.timeout(60_000) });
       return { status: r.status, headers: Object.fromEntries(r.headers), text: await r.text() };
+    },
+    sleep: async (a) => {
+      const s = a.seconds as number;
+      if (s < 0 || s > MAX_SLEEP_SECONDS) throw new Error(`seconds must be from 0 to ${MAX_SLEEP_SECONDS}, not ${s}`);
+      await new Promise((r) => setTimeout(r, s * 1000));
+      return null;
     },
   };
 

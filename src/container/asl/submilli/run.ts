@@ -31,6 +31,7 @@ const PARAM_SCHEMA: Record<Param["type"], Schema> = {
   string: STRING,
   strings: { type: "array", items: STRING },
   object: { type: "object", additionalProperties: STRING },
+  number: { type: "number" },
 };
 const ENTRY: Schema = { type: "object", properties: { name: STRING, type: STRING, size: { type: "number" } }, required: ["name", "type", "size"] };
 // Submilli types a tool's result from its JSON Schema, and cannot express a
@@ -52,6 +53,7 @@ const RESULT_SCHEMA: Record<string, Schema> = {
   rename_path: NONE,
   copy_path: NONE,
   remove_path: NONE,
+  sleep: NONE,
   http: { type: "object", properties: { status: { type: "number" }, headers: { type: "array", items: HEADER }, text: STRING }, required: ["status", "headers", "text"] },
 };
 const OUTCOME: Schema = { type: "object", properties: { code: { type: "number" }, output: STRING }, required: ["code", "output"] };
