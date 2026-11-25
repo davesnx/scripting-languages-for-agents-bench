@@ -13,25 +13,39 @@ export type Client = { call(fn: string, args: Record<string, unknown>): Promise<
 export function openClient(path = SOCKET): Promise<Client> {
   return new Promise((resolve, reject) => {
     const sock = connect(path);
-    const waiting: ((r: Reply) => void)[] = [];
+    // The broker answers each call when it finishes, so concurrent calls can be
+    // answered out of order: match each reply to its call by id.
+    const waiting = new Map<number, (r: Reply) => void>();
+    let next = 0;
+    const failAll = (error: string) => {
+      for (const w of waiting.values()) w({ ok: false, error, refused: false });
+      waiting.clear();
+    };
     let failed: string | null = null;
     sock.on("error", (e) => {
       failed = `the surface is not reachable: ${e.message}`;
-      for (const w of waiting.splice(0)) w({ ok: false, error: failed, refused: false });
+      failAll(failed);
       reject(new Error(failed));
     });
     sock.on("close", () => {
       failed ??= "the surface closed the connection";
-      for (const w of waiting.splice(0)) w({ ok: false, error: failed, refused: false });
+      failAll(failed);
     });
-    createInterface({ input: sock }).on("line", (line) => waiting.shift()?.(JSON.parse(line) as Reply));
+    createInterface({ input: sock }).on("line", (line) => {
+      const { id, ...reply } = JSON.parse(line) as Reply & { id?: number };
+      const w = id === undefined ? undefined : waiting.get(id);
+      if (!w) return;
+      waiting.delete(id as number);
+      w(reply as Reply);
+    });
     sock.on("connect", () =>
       resolve({
         call(fn, args) {
           if (failed) return Promise.resolve({ ok: false, error: failed, refused: false });
           return new Promise((r) => {
-            waiting.push(r);
-            sock.write(`${JSON.stringify({ fn, args })}\n`);
+            const id = ++next;
+            waiting.set(id, r);
+            sock.write(`${JSON.stringify({ id, fn, args })}\n`);
           });
         },
         close: () => sock.end(),
