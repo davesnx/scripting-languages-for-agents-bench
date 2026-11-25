@@ -38,6 +38,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3-venv &&
 RUN curl -fsSL https://submilli.ai/install.sh | sh -s -- --version v0.6.4 --install-dir /usr/local/bin
 # PUC-Rio Lua (lua-puc), built in the lua stage.
 COPY --from=lua /opt/lua/bin/lua /usr/local/bin/lua
+# Psychoscript (js-psychoscript): a confined JavaScript interpreter, driven from Node.
+RUN mkdir -p /opt/psychoscript && cd /opt/psychoscript && npm init -y >/dev/null \
+  && npm install --no-audit --no-fund psychoscript@0.3.0 && npm cache clean --force
 RUN git config --system user.name agent \
   && git config --system user.email agent@example.invalid \
   && git config --system init.defaultBranch main
