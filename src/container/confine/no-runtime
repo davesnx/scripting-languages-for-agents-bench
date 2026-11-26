@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "${0##*/}: not available on this machine" >&2
+exit 127

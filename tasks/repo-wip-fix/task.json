@@ -25,5 +25,8 @@
     "/work/.git/refs/heads/format-duration",
     "/work/.git/refs/stash",
     "/work/.git/worktrees/**"
+  ],
+  "runtimes": [
+    "node"
   ]
 }

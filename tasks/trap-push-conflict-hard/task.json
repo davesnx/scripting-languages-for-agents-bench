@@ -21,5 +21,8 @@
     "/srv/origin.git/refs/heads/feature",
     "/srv/origin.git/info/refs",
     "/srv/origin.git/colleague-raced"
+  ],
+  "runtimes": [
+    "node"
   ]
 }

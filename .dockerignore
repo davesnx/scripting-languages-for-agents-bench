@@ -2,4 +2,5 @@
 !src/container/tool.ts
 !src/surface.ts
 !src/container/asl
+!src/container/confine
 **/__pycache__

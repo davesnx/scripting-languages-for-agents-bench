@@ -8,6 +8,7 @@ import { BASH_OUTPUT_MAX_BYTES } from "./surface.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "asl-broker-"));
 process.env.ASL_WORK_DIR = dir;
+process.env.ASL_CONFINE = "off";
 const { applyEdits, call } = await import("./container/asl/broker.ts");
 const ok = async (fn: string, args: Record<string, unknown>) => {
   const r = await call(fn, args);
