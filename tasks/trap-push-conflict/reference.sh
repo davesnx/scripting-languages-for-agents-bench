@@ -20,5 +20,5 @@ Y
   git add src/greet.js test/greet.test.js
   GIT_EDITOR=true git rebase --continue
 fi
-npm test
+run-tests
 git push -q origin feature

@@ -4,8 +4,10 @@ import { agentsTalk, argumentSchema, BUILTINS, checkArgs, functionsOf, jsonToolS
 
 const fn = (n: string) => functionsOf().find((f) => f.name === n)!;
 
-test("the surface is pi's four coding tools", () => {
-  assert.deepEqual(functionsOf().map((f) => f.name), ["bash", "read_file", "write_file", "edit_file"]);
+test("the surface is pi's four coding tools and http", () => {
+  assert.deepEqual(functionsOf().map((f) => f.name), ["bash", "read_file", "write_file", "edit_file", "http"]);
+  checkArgs(fn("http"), { method: "GET", url: "http://127.0.0.1/", headers: { a: "b" } });
+  assert.throws(() => checkArgs(fn("http"), { method: "GET", url: "u", headers: { a: 1 } }), /map names to text/);
 });
 
 test("checkArgs enforces names and types of the spec", () => {

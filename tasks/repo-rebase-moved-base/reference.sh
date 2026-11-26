@@ -23,5 +23,5 @@ J
   git add src/invoice.js
   GIT_EDITOR=true git rebase --continue
 fi
-npm test
+run-tests
 git push --force-with-lease="feature/discounts:$lease" origin feature/discounts

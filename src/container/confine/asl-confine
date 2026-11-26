@@ -32,13 +32,14 @@ if ! pid=$(holder); then
   setsid unshare -m -p -f --mount-proc --propagation private /usr/local/lib/asl/asl-ns-init "$allow" </dev/null >/dev/null 2>&1 &
   outer=$!
   pid=""
-  for _ in $(seq 100); do
+  # Up to 60 s: on a loaded machine the namespace's mounts can take seconds.
+  for _ in $(seq 600); do
     pid=$(cat "/proc/$outer/task/$outer/children" 2>/dev/null | tr -d ' ') || true
     [ -n "$pid" ] && nsenter -t "$pid" -m test -e /run/asl-ns/ready 2>/dev/null && break
     pid=""
-    sleep 0.05
+    sleep 0.1
   done
-  [ -n "$pid" ] || { echo "asl-confine: the namespace did not start" >&2; exit 1; }
+  [ -n "$pid" ] || { echo "asl-confine: the namespace did not start within 60 seconds" >&2; exit 1; }
   echo "$pid" > "$dir/$key.pid"
 fi
 flock -u 9

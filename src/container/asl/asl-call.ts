@@ -13,7 +13,8 @@
 // JSON decoder, so the reply is a header line and a payload the module splits:
 //   header: "ok", "refused" or "error"; exit code 0.
 //   payload: bash "<exit code>\n<1 if truncated, else 0>\n<full output path>\n<seconds>\n" then the output;
-//   the other tools their text as is.
+//   http "<status>\n<n>\n", n "name\tvalue" lines (\\, newline and tab
+//   written \\\\, \\n and \\t), then the body; the other tools their text as is.
 import { openClient } from "./client.ts";
 
 const argv = process.argv.slice(2);
@@ -52,13 +53,19 @@ if (fn === "bash") {
   process.stdout.write(b.output);
   process.exit(b.exit_code);
 }
-process.stdout.write(String(r.value));
+process.stdout.write(typeof r.value === "string" ? r.value : `${JSON.stringify(r.value)}\n`);
 
 function teaReply(): never {
   if (!r.ok) return say(r.refused ? "refused" : "error", r.error);
   if (fn === "bash") {
     const b = r.value as Bash;
     return say("ok", `${b.exit_code}\n${b.truncated ? 1 : 0}\n${(b.full_output_path ?? "").replace(/\n/g, " ")}\n${b.wall_time_seconds}\n${b.output}`);
+  }
+  if (fn === "http") {
+    const h = r.value as { status: number; headers: Record<string, string>; text: string };
+    const esc = (x: string) => x.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/\t/g, "\\t");
+    const hs = Object.entries(h.headers);
+    return say("ok", `${h.status}\n${hs.length}\n${hs.map(([k, v]) => `${esc(k)}\t${esc(v)}\n`).join("")}${h.text}`);
   }
   return say("ok", String(r.value));
 }

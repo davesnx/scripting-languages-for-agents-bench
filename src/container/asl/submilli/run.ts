@@ -37,7 +37,15 @@ const RESULT_SCHEMA: Record<string, Schema> = {
   read_file: STRING,
   write_file: STRING,
   edit_file: STRING,
+  // Submilli cannot type a map with free keys: headers come as a list of { name, value }.
+  http: { type: "object", properties: { status: { type: "number" }, headers: { type: "array", items: { type: "object", properties: { name: STRING, value: STRING }, required: ["name", "value"] } }, text: STRING }, required: ["status", "headers", "text"] },
 };
+
+function shaped(fn: string, value: unknown): unknown {
+  if (fn !== "http") return value;
+  const v = value as { status: number; headers: Record<string, string>; text: string };
+  return { ...v, headers: Object.entries(v.headers).map(([name, x]) => ({ name, value: x })) };
+}
 
 const env = { ...process.env, HOME, SUBMILLI_HOME: HOME };
 
@@ -90,7 +98,7 @@ let run = await post(`/v1/sessions/${session.session_id}/execute`, { code: progr
 while (run.status === "suspended" && run.calls?.[0]) {
   const call = run.calls[0];
   const r = await client.call(call.tool, call.args ?? {});
-  const answer = r.ok ? { call_id: call.call_id, ok: true, value: r.value } : { call_id: call.call_id, ok: false, error: { kind: r.refused ? "denied" : "failed", message: `${r.refused ? "refused" : "error"}: ${r.error}` } };
+  const answer = r.ok ? { call_id: call.call_id, ok: true, value: shaped(call.tool, r.value) } : { call_id: call.call_id, ok: false, error: { kind: r.refused ? "denied" : "failed", message: `${r.refused ? "refused" : "error"}: ${r.error}` } };
   run = await post(`/v1/runs/${run.execution_id}/resume`, { results: [answer] });
 }
 client.close();
