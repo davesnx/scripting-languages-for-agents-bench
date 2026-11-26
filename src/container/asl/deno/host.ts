@@ -27,15 +27,16 @@ const deno = spawn(
 deno.stdin.write(`${JSON.stringify(program)}\n`);
 deno.stderr.pipe(process.stdout);
 createInterface({ input: deno.stdout }).on("line", async (line) => {
-  let req: { fn: string; args: Record<string, unknown> };
+  let req: { id?: number; fn: string; args: Record<string, unknown> };
   try {
     req = JSON.parse(line);
   } catch {
     deno.stdin.write(`${JSON.stringify({ ok: false, error: "bad request", refused: false })}\n`);
     return;
   }
+  // A call with an id (TypeScript) may be answered out of order; one without (Python) blocks until answered.
   const reply = await client.call(req.fn, req.args);
-  deno.stdin.write(`${JSON.stringify(reply)}\n`);
+  deno.stdin.write(`${JSON.stringify(req.id === undefined ? reply : { id: req.id, ...reply })}\n`);
 });
 deno.on("close", (code) => {
   client.close();

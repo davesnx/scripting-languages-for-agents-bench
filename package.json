@@ -9,7 +9,8 @@
     "validate": "node src/cli.ts validate",
     "run": "node src/cli.ts run",
     "report": "node src/cli.ts report",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/*.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

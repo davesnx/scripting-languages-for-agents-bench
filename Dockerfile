@@ -41,6 +41,9 @@ COPY --from=lua /opt/lua/bin/lua /usr/local/bin/lua
 # Psychoscript (js-psychoscript): a confined JavaScript interpreter, driven from Node.
 RUN mkdir -p /opt/psychoscript && cd /opt/psychoscript && npm init -y >/dev/null \
   && npm install --no-audit --no-fund psychoscript@0.3.0 && npm cache clean --force
+# pi's codemode sandbox (js-quickjs): QuickJS in WebAssembly, whose only capability is calling the tools it is given.
+RUN mkdir -p /opt/pi-codemode && cd /opt/pi-codemode && npm init -y >/dev/null \
+  && npm install --no-audit --no-fund @earendil-works/pi-codemode@1.6.1 && npm cache clean --force
 RUN git config --system user.name agent \
   && git config --system user.email agent@example.invalid \
   && git config --system init.defaultBranch main

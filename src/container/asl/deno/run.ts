@@ -4,6 +4,8 @@
 // start processes, use the network, or read the environment. Its only way out
 // is a surface call, written as one JSON line on stdout and answered by one
 // line on stdin; the Node host (host.ts) relays those to the broker.
+// TypeScript calls carry an id and wait without blocking, so that calls in
+// Promise.all run at the same time; Python's calls block, with no id.
 // Whatever the program prints goes to stderr.
 //
 //   deno run --no-prompt --allow-read=<this folder>,<pyodide> run.ts typescript|python <params.json path>
@@ -14,7 +16,7 @@
 // file; under Deno this local declaration shadows the global of the same shape.
 type DenoApi = {
   args: string[];
-  stdin: { readSync(p: Uint8Array): number | null };
+  stdin: { readSync(p: Uint8Array): number | null; read(p: Uint8Array): Promise<number | null> };
   stdout: { writeSync(p: Uint8Array): number };
   stderr: { writeSync(p: Uint8Array): number };
   inspect(x: unknown, o?: { depth?: number }): string;
@@ -39,10 +41,53 @@ function readLine(): string {
   return dec.decode(new Uint8Array(bytes));
 }
 
+function writeAll(s: string): void {
+  const bytes = enc.encode(s);
+  for (let done = 0; done < bytes.length; ) done += Deno.stdout.writeSync(bytes.subarray(done));
+}
+
 /** One synchronous surface call: request JSON in, reply JSON out. */
 function send(request: string): string {
-  Deno.stdout.writeSync(enc.encode(`${request}\n`));
+  writeAll(`${request}\n`);
   return readLine() || JSON.stringify({ ok: false, error: "the surface closed the connection", refused: false });
+}
+
+type Reply = { ok: boolean; value?: unknown; error?: string; refused?: boolean };
+const CLOSED: Reply = { ok: false, error: "the surface closed the connection", refused: false };
+const waiting = new Map<number, (r: Reply) => void>();
+let nextId = 0;
+let pumping = false;
+
+/** Reads replies from stdin and hands each to the call with its id. */
+async function pump(): Promise<void> {
+  const buf = new Uint8Array(1 << 16);
+  let text = "";
+  while (true) {
+    const n = await Deno.stdin.read(buf);
+    if (n === null) break;
+    text += dec.decode(buf.subarray(0, n), { stream: true });
+    for (let i = text.indexOf("\n"); i >= 0; i = text.indexOf("\n")) {
+      const { id, ...reply } = JSON.parse(text.slice(0, i)) as Reply & { id: number };
+      text = text.slice(i + 1);
+      waiting.get(id)?.(reply);
+      waiting.delete(id);
+    }
+  }
+  for (const w of waiting.values()) w(CLOSED);
+  waiting.clear();
+}
+
+/** One surface call that waits without blocking the program. */
+function sendAsync(fn: string, args: Record<string, unknown>): Promise<Reply> {
+  if (!pumping) {
+    pumping = true;
+    void pump();
+  }
+  return new Promise((resolve) => {
+    const id = ++nextId;
+    waiting.set(id, resolve);
+    writeAll(`${JSON.stringify({ id, fn, args })}\n`);
+  });
 }
 
 const fmt = (x: unknown) => (typeof x === "string" ? x : Deno.inspect(x, { depth: 6 }));
@@ -65,7 +110,7 @@ async function runTypeScript(): Promise<number> {
         typeof name !== "string" || name === "then"
           ? undefined
           : async (args: Record<string, unknown> = {}) => {
-              const r = JSON.parse(send(JSON.stringify({ fn: name, args: args ?? {} })));
+              const r = await sendAsync(name, args ?? {});
               if (!r.ok) throw new Error(`${r.refused ? "refused" : "error"}: ${r.error}`);
               return r.value;
             },

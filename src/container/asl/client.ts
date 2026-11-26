@@ -6,7 +6,7 @@ import { createInterface } from "node:readline";
 
 export const SOCKET = "/run/asl/broker.sock";
 
-export type Reply = { ok: true; value: unknown; program: boolean } | { ok: false; error: string; refused: boolean };
+export type Reply = { ok: true; value: unknown } | { ok: false; error: string; refused: boolean };
 
 export type Client = { call(fn: string, args: Record<string, unknown>): Promise<Reply>; close(): void };
 

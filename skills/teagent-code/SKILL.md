@@ -14,7 +14,7 @@ A program cannot do anything by itself. `main` is a value of type
 `Task e a`: a description of work. teagent carries it out, and gives back
 the value of `main` in Elm syntax. The program reaches the task only through
 the functions of the `Surface` module, listed above under "The functions of
-this task".
+the task".
 
 ## The program
 
@@ -27,7 +27,7 @@ import Surface exposing (..)
 
 main : Task Error String
 main =
-    read_file { path = "README.md" }
+    read_file { path = "README.md", offset = 0, limit = 0 }
 ```
 
 - One module, `Main`, that exposes `main`. Import `Agent exposing (..)` for
@@ -48,14 +48,18 @@ main =
 - `Agent` here has only `shell`, and it runs in an empty folder of a machine
   that has no task files and no network. It cannot reach the task. Every
   effect on the task goes through `Surface`.
-- A `Surface` function takes one record with every field named (a program
-  with no parameters takes `()`: `run_tests ()`), and gives a
-  `Task Error a`. A refused call fails with `Refused message`; a failed one
-  (a missing file, a target that exists) with `Failed message`.
-- A program of the task (such as `sqlite`) does not fail when the program
-  fails: it gives an `Outcome`, `{ code, output }`. Check `code`.
+- A `Surface` function takes one record with every field named, and gives
+  a `Task Error a`. Give 0 for a number you leave out:
+  `bash { command = "ls -la", timeout = 0 }`,
+  `read_file { path = "a.txt", offset = 0, limit = 0 }`. A refused call
+  fails with `Refused message`; a failed one (a missing file, an `oldText`
+  that is not in the file) with `Failed message`.
+- `bash` does not fail when the command fails: it gives a `BashResult`.
+  Check `exit_code`. `output` holds standard output and standard error
+  together.
 - Calls happen in the order of the chain, and each one happens at once. If
-  `main` fails later, what earlier calls changed stays changed.
+  `main` fails later, what earlier calls changed stays changed, even
+  when the report says "The changes of this run were dropped".
 
 ## Rules that models get wrong
 
@@ -89,13 +93,15 @@ import Surface exposing (..)
 
 main : Task Error (List String)
 main =
-    glob { pattern = "src/**/*.js" }
+    bash { command = "find src -name '*.js' | sort", timeout = 0 }
         |> andThen
-            (\paths ->
-                paths
+            (\found ->
+                found.output
+                    |> String.lines
+                    |> List.filter (\path -> path /= "")
                     |> List.map
                         (\path ->
-                            read_file { path = path }
+                            read_file { path = path, offset = 0, limit = 0 }
                                 |> andThen
                                     (\text ->
                                         write_file { path = path, content = String.replace "var " "let " text }
@@ -106,17 +112,19 @@ main =
             )
 ```
 
-- `list_dir { path = "." }` gives entries `{ name, kind, size }`; `kind` is
-  `"file"`, `"dir"`, `"symlink"` or `"other"`.
-- `stat { path = "new.txt" }` gives `Nothing` when nothing is there.
-- `rename_path` and `copy_path` never replace a file: they fail with
-  `Failed` if the target exists.
-- `remove_path` removes one file, symlink, or empty folder. To remove a
-  folder, remove what is in it first.
-- `read_file` and `write_file` are for text. For other files, use a program
-  of the task if it has one (such as a checksum program).
+- `read_file { path = "a.txt", offset = 10, limit = 11 }` reads lines 10
+  to 20 (the first line is 1).
+- `edit_file { path = "a.js", edits = [ { oldText = "let a = 1;", newText = "let a = 2;" } ] }`
+  replaces exact text. Each `oldText` must occur exactly once in the file,
+  or the call fails with `Failed` and nothing changes.
+- `write_file` replaces the whole file and makes missing folders.
+- Listing, moving, copying and removing files go through `bash`: `ls`,
+  `find`, `mv`, `cp`, `rm`, `mkdir -p`. Put temporary files in `/tmp`, not
+  in `/work`.
+- `read_file` and `write_file` are for text. Handle other files with a
+  program through `bash`, such as `sha256sum`.
 
-## HTTP and programs of the task
+## Commands, HTTP and SQLite
 
 ```elm
 module Main exposing (main)
@@ -125,32 +133,41 @@ import Agent exposing (..)
 import Surface exposing (..)
 
 
-checked : Outcome -> Task Error String
+checked : BashResult -> Task Error String
 checked result =
-    if result.code == 0 then
+    if result.exit_code == 0 then
         succeed result.output
 
     else
         fail (Failed result.output)
 
 
-main : Task Error { health : Int, rows : String }
+main : Task Error { status : String, names : List String }
 main =
-    http { url = "http://127.0.0.1:8080/items", method = "GET", headers = [], body = "" }
+    bash { command = "curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/items", timeout = 0 }
+        |> andThen checked
         |> andThen
-            (\response ->
-                sqlite { sql = "SELECT id, name FROM users LIMIT 5;" }
+            (\status ->
+                bash { command = "sqlite3 -separator '|' app.db 'SELECT id, name FROM users;' | cut -d '|' -f 2", timeout = 0 }
                     |> andThen checked
-                    |> map (\rows -> { health = response.status, rows = rows })
+                    |> map (\out -> { status = status, names = List.filter (\n -> n /= "") (String.lines out) })
             )
 ```
 
-- `http` gives `{ status, headers, text }` for any status. Check `status`.
-  `headers` is a list of `( name, value )`; `body = ""` sends none.
-- A list field adds one argument per item: `git_log { argv = [ "main..feature" ] }`.
-  Only the programs listed for the task exist.
-- There is no JSON decoder. Take what you need from `text` with `String`
-  functions, or ask a program of the task for plain text.
+- There is no JSON decoder. Get plain text from the command instead:
+  `sqlite3 -separator '|'` gives one row per line, and `cut`, `awk`, `jq -r`
+  or `grep` in the command keep only the fields you need. Split the rest
+  with `String.lines` and `String.split "|"`.
+- `curl` exits 0 for any HTTP status. Print the status with
+  `-w '%{http_code}'`, as above, or add `-f` to make a status of 400 or more
+  an exit code. Only services on `127.0.0.1` or `localhost` answer.
+- Pass longer SQL or a JSON body on standard input with a heredoc, written
+  in a `"""` string: `sqlite3 app.db <<'SQL'`, then the SQL, then `SQL` on
+  its own line.
+- Keep output short with `head`, `grep` or `wc -l` in the command. Output
+  over 1 MiB is cut in the middle: then `truncated` is `True` and
+  `full_output_path` names a file with all of it.
+- Check that a program exists with `command -v name` before you rely on it.
 
 ## Errors
 
@@ -163,7 +180,7 @@ import Surface exposing (..)
 
 main : Task Error String
 main =
-    read_file { path = "notes.txt" }
+    read_file { path = "notes.txt", offset = 0, limit = 0 }
         |> onError
             (\problem ->
                 case problem of
@@ -179,8 +196,8 @@ main =
 
 1. Look first: one program that lists and reads what you need to plan, and
    returns it.
-2. Then one program that makes the change and checks it, for example with
-   a test program of the task, and fails if the check fails.
+2. Then one program that makes the change and checks it, for example by
+   running the tests with `bash`, and fails if the check fails.
 3. Keep the value of `main` short: counts, the lines that matter,
    `String.left 2000 text`.
 4. After a compile error, read the report and the `Hint:` line, fix only

@@ -26,6 +26,8 @@ export type AgentInput = {
   tools: ToolSpec[];
   callTool(name: string, args: Record<string, unknown>, timeoutSeconds: number): Promise<ToolOutcome>;
   maxTurns: number;
+  /** Tool calls the run may make; a call past it is not run, and the run stops with "executions". */
+  maxExecutions?: number;
   deadline: number;
   toolTimeoutSeconds: number;
   maxOutputChars: number;
@@ -44,6 +46,7 @@ export function loopAgent(model: Model): Agent {
       { role: "user", content: input.instruction },
     ];
     const turns: TurnLog[] = [];
+    let executions = 0;
     const stop = (stopReason: StopReason, error: string | null = null): AgentOutput => ({ messages, turns, stopReason, error });
     for (let turn = 1; ; turn++) {
       if (turn > input.maxTurns) return stop("turns");
@@ -64,6 +67,8 @@ export function loopAgent(model: Model): Agent {
       if (cut) return stop("output-limit");
       if (!message.tool_calls?.length) return stop("done");
       for (const call of message.tool_calls) {
+        if (input.maxExecutions !== undefined && executions >= input.maxExecutions) return stop("executions");
+        executions++;
         const started = Date.now();
         const remaining = Math.floor((input.deadline - started) / 1000);
         let outcome: ToolOutcome;
