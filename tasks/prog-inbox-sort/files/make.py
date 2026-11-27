@@ -355,7 +355,8 @@ def delivered(path=LOG):
     """(the arrivals in the order the scanner's log lists them as delivered, then those it had not
     come to yet in the planned order; how many it delivered). The job is done only after the
     scanner stopped, so an arrival the run did not wait for is still expected; one the log lists
-    as skipped (its path stayed taken) is not. ValueError when the log does not match the plan."""
+    as skipped (its path stayed taken) is not. A last line `done <time> delivered=<n>` marks the
+    end of the deliveries. ValueError when the log does not match the plan."""
     plan = arrivals()
     try:
         with open(path, "rb") as f:
@@ -363,6 +364,13 @@ def delivered(path=LOG):
     except FileNotFoundError:
         lines = []
     out, seen = [], set()
+    if lines and lines[-1].startswith("done "):
+        m = re.fullmatch(r"done \S+ delivered=([0-9]+)", lines.pop())
+        if not m:
+            raise ValueError("the scanner log has a malformed done line")
+        done = int(m[1])
+    else:
+        done = None
     for line in lines:
         entry = json.loads(line)
         a = plan[entry["n"]]
@@ -371,6 +379,8 @@ def delivered(path=LOG):
         seen.add(entry["n"])
         if not entry.get("skipped"):
             out.append(a)
+    if done is not None and (done != len(out) or len(seen) != len(plan)):
+        raise ValueError("the scanner log's done line does not match its deliveries")
     return out + [a for a in plan if a["n"] not in seen], len(out)
 
 
