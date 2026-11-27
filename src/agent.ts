@@ -162,14 +162,15 @@ export function anthropicModel(config: ModelConfig, maxTokens: number, apiKey: s
         } else if (m.role === "system") system.push(m.content);
         else history.push({ role: "user", content: m.content });
       }
-      const response = await client.messages.create({
+      // Streamed: the SDK refuses a request that may take over 10 minutes (a large max_tokens) otherwise.
+      const response = await client.messages.stream({
         model: config.id,
         max_tokens: maxTokens,
         cache_control: { type: "ephemeral" },
         system: system.join("\n\n"),
         messages: history,
         tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: { type: "object", ...t.parameters } })),
-      });
+      }).finalMessage();
       let text = "";
       const calls: ToolCall[] = [];
       for (const block of response.content) {
